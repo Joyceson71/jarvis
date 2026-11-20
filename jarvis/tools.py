@@ -434,6 +434,12 @@ def system_status() -> str:
     return ", ".join(lines)
 
 
+@tool("Report the current Jarvis version and operational health status.")
+def system_health() -> str:
+    from . import __version__
+    return f"Jarvis v{__version__} is healthy and running normally."
+
+
 @tool("Lock, sleep, restart or shut down the PC. Restart and shutdown ask the user first.",
       confirm=lambda a: str(a.get("action", "")).lower() in ("restart", "shutdown"),
       action="lock, sleep, restart, shutdown or cancel (cancels a pending shutdown)")

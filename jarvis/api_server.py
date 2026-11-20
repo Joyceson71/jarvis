@@ -14,14 +14,24 @@ import re
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import tools
+from . import __version__, tools
 
 log = logging.getLogger("jarvis.api")
 MAX_BODY = 64 * 1024
 
 
+def get_health_status() -> dict:
+    """Return health status and version information for the Jarvis service."""
+    return {
+        "ok": True,
+        "name": "jarvis",
+        "version": __version__,
+        "status": "healthy",
+    }
+
+
 class _Handler(BaseHTTPRequestHandler):
-    server_version = "Jarvis/0.1"
+    server_version = f"Jarvis/{__version__}"
 
     def log_message(self, fmt, *args):  # route access logs to our logger
         log.debug("%s - %s", self.address_string(), fmt % args)
@@ -56,7 +66,7 @@ class _Handler(BaseHTTPRequestHandler):
     # ---- routes ------------------------------------------------------
     def do_GET(self):
         if self.path == "/health":
-            return self._send(200, {"ok": True, "name": "jarvis"})
+            return self._send(200, get_health_status())
         if not self._authorised():
             return self._send(401, {"error": "unauthorised"})
         if self.path == "/tasks":

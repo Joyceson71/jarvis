@@ -1,6 +1,8 @@
 import datetime as dt
+import inspect
 import json
 import sys
+import tempfile
 import threading
 import urllib.request
 from pathlib import Path
@@ -218,19 +220,26 @@ def test_api(tmp_path):
     threading.Thread(target=server.serve_forever, daemon=True).start()
     base = f"http://127.0.0.1:{server.server_address[1]}"
 
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
     def call(path, method="GET", body=None, token="secret"):
         req = urllib.request.Request(base + path, method=method,
                                      data=json.dumps(body).encode() if body is not None else None)
         if token:
             req.add_header("Authorization", f"Bearer {token}")
         try:
-            with urllib.request.urlopen(req, timeout=5) as r:
+            with opener.open(req, timeout=5) as r:
                 return r.status, json.loads(r.read())
         except urllib.error.HTTPError as e:
             return e.code, json.loads(e.read())
 
     try:
-        assert call("/health", token=None)[0] == 200
+        health_code, health_data = call("/health", token=None)
+        assert health_code == 200
+        assert health_data["ok"] is True
+        assert health_data["name"] == "jarvis"
+        assert "version" in health_data
+        assert health_data["status"] == "healthy"
         assert call("/tasks", token=None)[0] == 401
         assert call("/tasks", token="wrong")[0] == 401
         code, data = call("/tasks", "POST", {"title": "From phone"})
@@ -243,3 +252,27 @@ def test_api(tmp_path):
         assert call("/nothing")[0] == 404
     finally:
         server.shutdown()
+
+
+def test_health_and_version():
+    from jarvis import __version__
+    from jarvis.api_server import get_health_status
+    health = get_health_status()
+    assert health["ok"] is True
+    assert health["version"] == __version__
+    assert health["status"] == "healthy"
+    assert "healthy" in tools.call_tool("system_health", {})
+
+
+if __name__ == "__main__":
+    test_funcs = [func for name, func in list(globals().items()) if name.startswith("test_") and callable(func)]
+    print(f"Running {len(test_funcs)} test functions...")
+    for func in test_funcs:
+        sig = inspect.signature(func)
+        if "tmp_path" in sig.parameters:
+            with tempfile.TemporaryDirectory() as td:
+                func(Path(td))
+        else:
+            func()
+        print(f"  [PASS] {func.__name__}")
+    print("All tests passed successfully!")
