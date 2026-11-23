@@ -137,8 +137,13 @@ def main(argv: list | None = None) -> int:
     parser.add_argument("--text", action="store_true", help="type instead of speaking (no microphone)")
     parser.add_argument("--pair", action="store_true", help="show the address and token for the phone app")
     parser.add_argument("--no-api", action="store_true", help="don't start the phone API")
+    parser.add_argument("--test", action="store_true", help="run the automated test suite and exit")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
+
+    if args.test:
+        from tests.test_jarvis import run_tests
+        return 0 if run_tests() else 1
 
     settings = Settings.load()
 

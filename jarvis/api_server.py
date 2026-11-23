@@ -65,7 +65,7 @@ class _Handler(BaseHTTPRequestHandler):
 
     # ---- routes ------------------------------------------------------
     def do_GET(self):
-        if self.path == "/health":
+        if self.path in ("/health", "/version"):
             return self._send(200, get_health_status())
         if not self._authorised():
             return self._send(401, {"error": "unauthorised"})

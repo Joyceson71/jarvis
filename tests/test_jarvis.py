@@ -117,7 +117,7 @@ def test_summary(tmp_path):
 # ---- tools -----------------------------------------------------------------
 def test_tool_schemas():
     specs = {s["function"]["name"]: s["function"] for s in tools.tool_specs()}
-    assert {"open_app", "web_search", "add_task", "run_shell", "set_reminder"} <= set(specs)
+    assert {"open_app", "web_search", "add_task", "run_shell", "set_reminder", "system_health"} <= set(specs)
     p = specs["add_task"]["parameters"]
     assert p["required"] == ["title"] and p["properties"]["remind"]["type"] == "boolean"
     assert specs["set_reminder"]["parameters"]["properties"]["in_minutes"]["type"] == "integer"
@@ -264,15 +264,50 @@ def test_health_and_version():
     assert "healthy" in tools.call_tool("system_health", {})
 
 
+def test_main_test_flag():
+    from jarvis.main import main
+    assert main(["--test"]) == 0
+
+
+_RUNNING_TESTS = False
+
+
+def run_tests() -> bool:
+    """Run all test functions and return True if all pass, False otherwise."""
+    global _RUNNING_TESTS
+    if _RUNNING_TESTS:
+        return True
+    _RUNNING_TESTS = True
+    try:
+        test_funcs = [
+            (name, func)
+            for name, func in sorted(globals().items())
+            if name.startswith("test_") and callable(func)
+        ]
+        print(f"Running {len(test_funcs)} test functions...", flush=True)
+        failed = []
+        for name, func in test_funcs:
+            sig = inspect.signature(func)
+            try:
+                if "tmp_path" in sig.parameters:
+                    with tempfile.TemporaryDirectory() as td:
+                        func(Path(td))
+                else:
+                    func()
+                print(f"  [PASS] {name}", flush=True)
+            except Exception as e:
+                failed.append((name, e))
+                print(f"  [FAIL] {name}: {e}", flush=True)
+
+        if failed:
+            print(f"\n{len(failed)} test(s) failed out of {len(test_funcs)}.", flush=True)
+            return False
+        print(f"\nAll {len(test_funcs)} tests passed successfully!", flush=True)
+        return True
+    finally:
+        _RUNNING_TESTS = False
+
+
 if __name__ == "__main__":
-    test_funcs = [func for name, func in list(globals().items()) if name.startswith("test_") and callable(func)]
-    print(f"Running {len(test_funcs)} test functions...")
-    for func in test_funcs:
-        sig = inspect.signature(func)
-        if "tmp_path" in sig.parameters:
-            with tempfile.TemporaryDirectory() as td:
-                func(Path(td))
-        else:
-            func()
-        print(f"  [PASS] {func.__name__}")
-    print("All tests passed successfully!")
+    success = run_tests()
+    sys.exit(0 if success else 1)

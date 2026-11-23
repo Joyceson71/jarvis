@@ -48,4 +48,11 @@ Keep your token private: anyone with it can control your PC.
 5. Screen understanding (screenshot -> vision model) for "click that button" control
 
 ## Tests
-`pip install pytest && python -m pytest tests`
+Run tests directly:
+```bash
+python run.py --test
+```
+Or with pytest:
+```bash
+pytest tests
+```
