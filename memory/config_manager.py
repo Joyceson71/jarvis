@@ -97,21 +97,53 @@ def save_api_keys(gemini_api_key: str) -> None:
         data.pop("local_only", None)     # a key given is a choice to use Gemini again
     _write_config(data)
 
-def load_api_keys() -> dict:
-    if not CONFIG_FILE.exists():
-        return {}
-    for attempt in range(3):
+def _read_env_fallback() -> dict:
+    """Read key-values from .env file if it exists."""
+    env_file = BASE_DIR / ".env"
+    out = {}
+    if env_file.exists():
         try:
-            data = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
-            return data if isinstance(data, dict) else {}
-        except Exception as e:
-            if attempt == 2:
-                # Plain text: an emoji here raised UnicodeEncodeError on a
-                # Windows console, turning a failed read into a crash.
-                print(f"[Config] Failed to load api_keys.json: {e}")
-                return {}
-            time.sleep(0.05)
-    return {}
+            for line in env_file.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k = k.strip().lower()
+                v = v.strip().strip("'\"")
+                if k and v:
+                    out[k] = v
+        except Exception:
+            pass
+    return out
+
+
+def load_api_keys() -> dict:
+    data = {}
+    if CONFIG_FILE.exists():
+        for attempt in range(3):
+            try:
+                raw = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
+                if isinstance(raw, dict):
+                    data = raw
+                    break
+            except Exception as e:
+                if attempt == 2:
+                    # Plain text: an emoji here raised UnicodeEncodeError on a
+                    # Windows console, turning a failed read into a crash.
+                    print(f"[Config] Failed to load api_keys.json: {e}")
+                time.sleep(0.05)
+
+    # Fallback to .env and environment variables
+    env_data = _read_env_fallback()
+    if not data.get("gemini_api_key"):
+        gemini_key = os.environ.get("GEMINI_API_KEY") or env_data.get("gemini_api_key")
+        if gemini_key:
+            data["gemini_api_key"] = gemini_key
+    if not data.get("user_name"):
+        user_name = os.environ.get("JARVIS_USER_NAME") or env_data.get("jarvis_user_name")
+        if user_name:
+            data["user_name"] = user_name
+    return data
 
 def get_gemini_key() -> str | None:
     return load_api_keys().get("gemini_api_key")

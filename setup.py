@@ -1,5 +1,5 @@
 """
-MARK LIV — one-time setup.
+MARK LVII — one-time setup.
 
 Installs the Python dependencies for THIS operating system only: the OS-specific
 packages in requirements.txt carry `sys_platform` markers, so a macOS or Linux
@@ -47,7 +47,7 @@ def _check_python() -> None:
               f"{MAX_PY[0]}.{MAX_PY[1]} and run setup with that.")
         return
     if v < MIN_PY:
-        print(f"\n❌ Python {v[0]}.{v[1]} detected — MARK LIV needs at "
+        print(f"\n❌ Python {v[0]}.{v[1]} detected — MARK LVII needs at "
               f"least Python {MIN_PY[0]}.{MIN_PY[1]}.")
         print("   Install a supported version and run setup with it, e.g.:")
         print(f"     py -{MIN_PY[0]}.{MIN_PY[1]} setup.py        (Windows)")
@@ -66,8 +66,42 @@ def _check_assets() -> None:
         )
 
 
+def verify_setup() -> bool:
+    """Verify system requirements and asset integrity without running install."""
+    print(f"🔍 Checking MARK LVII environment — OS: {OS or 'unknown'}, Python {sys.version_info[0]}.{sys.version_info[1]}")
+    _check_python()
+    _check_assets()
+
+    core_modules = [
+        ("PyQt6", "PyQt6"),
+        ("sounddevice", "sounddevice"),
+        ("numpy", "numpy"),
+        ("google-genai", "google.genai"),
+        ("requests", "requests"),
+        ("bs4", "bs4"),
+        ("psutil", "psutil"),
+    ]
+    all_ok = True
+    for label, mod in core_modules:
+        try:
+            __import__(mod)
+            print(f"  ✓ {label}")
+        except ImportError:
+            all_ok = False
+            print(f"  ✗ {label} (missing)")
+
+    if all_ok:
+        print("\n✅ Core dependencies and assets verified successfully!")
+    else:
+        print("\n⚠️  Some dependencies are missing. Run `python setup.py` to install.")
+    return all_ok
+
+
 def main() -> None:
-    print(f"⚙  MARK LIV setup — detected OS: {OS or 'unknown'}, "
+    if "--check" in sys.argv or "--verify" in sys.argv:
+        sys.exit(0 if verify_setup() else 1)
+
+    print(f"⚙  MARK LVII setup — detected OS: {OS or 'unknown'}, "
           f"Python {sys.version_info[0]}.{sys.version_info[1]}")
     _check_python()
 
